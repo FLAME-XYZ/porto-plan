@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forex Planning By FLAME
+    </title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        .tab {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .tab button {
+            padding: 10px 20px;
+            margin: 0 5px;
+            cursor: pointer;
+            border: none;
+            background-color: #ddd;
+        }
+        .tab button.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .tabcontent {
+            display: none;
+        }
+        .show {
+            display: block;
+        }
+        table {
+            width: 80%;
+            margin: auto;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        .success {
+            background-color: lightgreen !important;
+        }
+        .fail {
+            background-color: lightcoral !important;
+        }
+        .summary-container {
+            width: 50%;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            text-align: left;
+            background-color: #f9f9f9;
+        }
+        .summary-container label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .summary-container input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            text-align: right;
+        }
+        .reset-btn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: red;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Forex Planning</h2>
+    
+    <div class="tab">
+        <button class="tablinks active" onclick="openTab(event, 'TradingTable')">Tabel Trading</button>
+        <button class="tablinks" onclick="openTab(event, 'Summary')">Saldo & Winrate</button>
+    </div>
+
+    <div id="TradingTable" class="tabcontent show">
+        <table>
+            <thead>
+                <tr>
+                    <th>Hari</th>
+                    <th>Modal Awal</th>
+                    <th>Profit</th>
+                    <th>Modal Akhir</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="tradingTable">
+            </tbody>
+        </table>
+        <button class="reset-btn" onclick="resetData()">Reset</button>
+    </div>
+
+    <div id="Summary" class="tabcontent">
+        <div class="summary-container">
+            <label for="totalSaldo">Saldo Keseluruhan:</label>
+            <input type="number" id="totalSaldo" value="500000" onchange="manualUpdateSaldo()">
+            <label for="winRate">Winrate:</label>
+            <input type="text" id="winRate" readonly>
+        </div>
+    </div>
+
+    <script>
+        let modal = parseFloat(localStorage.getItem("modal")) || 500000;
+        let totalDays = parseInt(localStorage.getItem("totalDays")) || 30;
+        let wins = parseInt(localStorage.getItem("wins")) || 0;
+        let losses = parseInt(localStorage.getItem("losses")) || 0;
+        let tableBody = document.getElementById("tradingTable");
+        let totalSaldoInput = document.getElementById("totalSaldo");
+        let winRateInput = document.getElementById("winRate");
+        totalSaldoInput.value = modal;
+        updateSummary();
+        
+        function addRow(day) {
+            let profit = modal * 0.13;
+            let modalAkhir = modal + profit;
+            let row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${day}</td>
+                <td>Rp${modal.toLocaleString()}</td>
+                <td>Rp${profit.toLocaleString()}</td>
+                <td>Rp${modalAkhir.toLocaleString()}</td>
+                <td>
+                    <button onclick="markSuccess(this, ${profit})">✔</button>
+                    <button onclick="markFail(this, ${profit})">✘</button>
+                </td>
+            `;
+            tableBody.appendChild(row);
+            modal = modalAkhir;
+        }
+        
+        function markSuccess(button, profit) {
+            let row = button.parentElement.parentElement;
+            row.classList.remove("fail");
+            row.classList.add("success");
+            wins++;
+            updateSaldo(profit);
+            updateSummary();
+            checkCompletion();
+        }
+
+        function markFail(button, profit) {
+            let row = button.parentElement.parentElement;
+            row.classList.remove("success");
+            row.classList.add("fail");
+            losses++;
+            updateSaldo(-profit);
+            updateSummary();
+            checkCompletion();
+        }
+
+        function updateSaldo(amount) {
+            let currentSaldo = parseFloat(totalSaldoInput.value);
+            totalSaldoInput.value = (currentSaldo + amount).toFixed(0);
+            localStorage.setItem("modal", totalSaldoInput.value);
+        }
+
+        function manualUpdateSaldo() {
+            localStorage.setItem("modal", totalSaldoInput.value);
+            updateSummary();
+        }
+
+        function updateSummary() {
+            let totalTrades = wins + losses;
+            let winPercentage = totalTrades > 0 ? (wins / totalTrades * 100).toFixed(2) : 0;
+            winRateInput.value = `${winPercentage}%`;
+            localStorage.setItem("wins", wins);
+            localStorage.setItem("losses", losses);
+        }
+
+        function checkCompletion() {
+            if (wins + losses >= totalDays) {
+                totalDays++;
+                localStorage.setItem("totalDays", totalDays);
+                addRow(totalDays);
+            }
+        }
+
+        function resetData() {
+            localStorage.clear();
+            location.reload();
+        }
+
+        function openTab(evt, tabName) {
+            let tabcontent = document.getElementsByClassName("tabcontent");
+            for (let i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].classList.remove("show");
+            }
+            let tablinks = document.getElementsByClassName("tablinks");
+            for (let i = 0; i < tablinks.length; i++) {
+                tablinks[i].classList.remove("active");
+            }
+            document.getElementById(tabName).classList.add("show");
+            evt.currentTarget.classList.add("active");
+        }
+
+        for (let i = 1; i <= totalDays; i++) {
+            addRow(i);
+        }
+    </script>
+</body>
+</html>
+
